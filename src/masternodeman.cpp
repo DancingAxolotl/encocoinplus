@@ -997,7 +997,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         uint256 hash;
         CAmount masterNodeVout = 0;
         int checkMasterNodeCollateralLevel = 0;
-        checkMasterNodeCollateralLevel = ((Params().GetRequiredMasternodeCollateral(chainActive.Height()) - 0.01) * COIN);
+        checkMasterNodeCollateralLevel = ((Params().GetRequiredMasternodeCollateral(chainActive.Height())));
         if(GetTransaction(vin.prevout.hash, txVin, hash, true)) {
             for (CTxOut out : txVin.vout) {
                 if (checkMasterNodeCollateralLevel == 1)

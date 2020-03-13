@@ -1886,7 +1886,7 @@ CAmount CWallet::GetImmatureCollateral() const
     //             nTotal+= out.tx->vout[out.i].nValue;
     //         }
     // }
-    int checkMasterNodeCollateralLevel = 0;
+    int checkMasterNodeCollateralLevel = Params().GetRequiredMasternodeCollateral(chainActive.Height());
     for(COutput& out : vCoins){
             if (checkMasterNodeCollateralLevel == 1)
         {

@@ -477,7 +477,7 @@ std::vector<COutput> CActiveMasternode::SelectCoinsMasternode()
 
     for (const COutput& out : vCoins) {
         int checkMasterNodeCollateralLevel = 0;
-        checkMasterNodeCollateralLevel = (Params().GetRequiredMasternodeCollateral(chainActive.Height()) * COIN);
+        checkMasterNodeCollateralLevel = (Params().GetRequiredMasternodeCollateral(chainActive.Height()));
         if (checkMasterNodeCollateralLevel == 1)
         {
             if(out.tx->vout[out.i].nValue == 550 * COIN)
