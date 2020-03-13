@@ -361,14 +361,14 @@ void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int64_t nFe
 
     bool hasPayment = true;
     CScript payee;
-    const unsigned int winningMasternodeLevel;
+    unsigned int winningMasternodeLevel;
 
     //spork
     if (!masternodePayments.GetBlockPayee(pindexPrev->nHeight + 1, payee)) {
         //no masternode detected
         CMasternode* winningNode = mnodeman.GetCurrentMasterNode(1);
         if (winningNode) {
-            winningMasternodeLevel = winningNode.Level();
+            winningMasternodeLevel = winningNode->Level();
             payee = GetScriptForDestination(winningNode->pubKeyCollateralAddress.GetID());
         } else {
             LogPrint("masternode","CreateNewBlock: Failed to detect masternode to pay\n");
@@ -525,7 +525,7 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
     }
 }
 
-bool CMasternodePayments::GetBlockPayee(int nBlockHeight, unsigned int masternodeLevel, CScript& payee)
+bool CMasternodePayments::GetBlockPayee(int nBlockHeight, CScript& payee)
 {
     auto block = mapMasternodeBlocks.find(nBlockHeight);
 
@@ -533,11 +533,11 @@ bool CMasternodePayments::GetBlockPayee(int nBlockHeight, unsigned int masternod
         return false;
     if(nBlockHeight >= Params().EnforMultiTierMasternode())
     {
-    return block->second.GetPayee(masternodeLevel, payee);
+        return block->second.GetPayee(payee);
     }
     else
     {
-    return mapMasternodeBlocks[nBlockHeight].GetPayee(payee);
+        return mapMasternodeBlocks[nBlockHeight].GetPayee(payee);
     }
 }
 
@@ -565,7 +565,7 @@ bool CMasternodePayments::IsScheduled(CMasternode& mn, int nSameLevelMNCount, in
             continue;
 
         CScript payee;
-        if(!block_payees->second.GetPayee(mn.Level(), payee))
+        if(!block_payees->second.GetPayee(payee))
             continue;
 
         if(mnpayee == payee)
@@ -596,7 +596,7 @@ bool CMasternodePayments::AddWinningMasternode(CMasternodePaymentWinner& winnerI
         }
     }
 
-    mapMasternodeBlocks[winnerIn.nBlockHeight].AddPayee(winnerIn.payeeLevel,winnerIn.payee, 1); // Added winnerIn.payeeLevel for Multitier Updation
+    mapMasternodeBlocks[winnerIn.nBlockHeight].AddPayee(winnerIn.payeeLevel, winnerIn.payee, 1);
 
     return true;
 }
@@ -659,7 +659,7 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
         if(payee.nVotes < MNPAYMENTS_SIGNATURES_REQUIRED)
             continue;
 
-        auto requiredMasternodePayment = GetMasternodePayment(nBlockHeight, payee.masternodeLevel, nReward,0, false);
+        auto requiredMasternodePayment = GetMasternodePayment(nBlockHeight, payee.masternodeLevel, nReward, 0, false);
 
         auto payee_out = std::find_if(txNew.vout.cbegin(), txNew.vout.cend(), [&payee, &requiredMasternodePayment](const CTxOut& out){
 
@@ -807,7 +807,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
             newWinner.nBlockHeight = nBlockHeight;
 
             CScript payee = GetScriptForDestination(pmn->pubKeyCollateralAddress.GetID());
-            newWinner.AddPayee(payee);
+            newWinner.AddPayee(payee, pmn->Level());
 
             CTxDestination address1;
             ExtractDestination(payee, address1);

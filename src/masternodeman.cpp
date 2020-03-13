@@ -572,22 +572,20 @@ CMasternode* CMasternodeMan::FindRandomNotInVec(std::vector<CTxIn>& vecToExclude
     return NULL;
 }
 
-// Added for Multitier-Architecture Updation
-
 CMasternode* CMasternodeMan::GetCurrentMasterNode(int mod, int64_t nBlockHeight, int minProtocol)
 {
     int64_t score = 0;
     CMasternode* winner = nullptr;
 
     // scan for winner
-    for(CMasternode& mn : vMasternodes) {
+    for (CMasternode& mn : vMasternodes) {
         mn.Check();
 
         if(mn.protocolVersion < minProtocol || !mn.IsEnabled())
             continue;
 
         // calculate the score for each Masternode
-        uint256 n  = mn.CalculateScore(mod, nBlockHeight);
+        uint256 n = mn.CalculateScore(mod, nBlockHeight);
         int64_t n2 = n.GetCompact(false);
 
         // determine the winner

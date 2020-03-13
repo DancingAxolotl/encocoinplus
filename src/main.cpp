@@ -52,9 +52,7 @@
 #include <boost/foreach.hpp>
 #include <atomic>
 #include <queue>
-#include <iostream>
 
-using namespace std;
 
 #if defined(NDEBUG)
 #error "EPGC cannot be compiled without assertions."
@@ -978,7 +976,7 @@ bool ContextualCheckZerocoinMint(const CTransaction& tx, const libzerocoin::Publ
 bool isBlockBetweenFakeSerialAttackRange(int nHeight)
 {
     //if (Params().NetworkID() != CBaseChainParams::MAIN)
-       // return false;
+        return false;
 
     //return nHeight <= Params().Zerocoin_Block_EndFakeSerial();
 }
@@ -1161,7 +1159,7 @@ bool CheckZerocoinSpend(const CTransaction& tx, bool fVerifySignature, CValidati
     return fValidated;
 }
 
-bool    CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fRejectBadUTXO, CValidationState& state, bool fFakeSerialAttack, bool fColdStakingActive)
+bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fRejectBadUTXO, CValidationState& state, bool fFakeSerialAttack, bool fColdStakingActive)
 {
     // Basic checks that don't depend on any context
     if (tx.vin.empty())
@@ -1960,8 +1958,6 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos)
 
     // Check the header
     if (block.IsProofOfWork()) {
-        printf("At line 1962 ******************");
-         printf("-----main.cpp-----line-----1963----- block.nBits=%d\n", block.nBits);
         if (!CheckProofOfWork(block.GetHash(), block.nBits))
             return error("ReadBlockFromDisk : Errors in block header");
     }

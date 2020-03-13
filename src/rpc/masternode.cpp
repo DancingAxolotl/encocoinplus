@@ -28,7 +28,7 @@ UniValue getpoolinfo(const UniValue& params, bool fHelp)
 
             "\nResult:\n"
             "{\n"
-            //"  \"current\": \"addr\",    (string) EPGC address of current masternode\n"
+            "  \"current\": \"addr\",    (string) EPGC address of current masternode\n"
             "  \"state\": xxxx,        (string) unknown\n"
             "  \"entries\": xxxx,      (numeric) Number of entries\n"
             "  \"accepted\": xxxx,     (numeric) Number of entries accepted\n"
@@ -38,7 +38,7 @@ UniValue getpoolinfo(const UniValue& params, bool fHelp)
             HelpExampleCli("getpoolinfo", "") + HelpExampleRpc("getpoolinfo", ""));
 
     UniValue obj(UniValue::VOBJ);
-    //obj.push_back(Pair("current_masternode", mnodeman.GetCurrentMasterNode()->addr.ToString()));
+    obj.push_back(Pair("current_masternode", mnodeman.GetCurrentMasterNode()->addr.ToString()));
     obj.push_back(Pair("state", obfuScationPool.GetState()));
     obj.push_back(Pair("entries", obfuScationPool.GetEntriesCount()));
     obj.push_back(Pair("entries_accepted", obfuScationPool.GetCountEntriesAccepted()));
@@ -153,7 +153,6 @@ UniValue masternodeconnect(const UniValue& params, bool fHelp)
     }
 }
 
-
 UniValue getmasternodecount (const UniValue& params, bool fHelp)
 {
     if (fHelp || (params.size() > 0))
@@ -165,8 +164,8 @@ UniValue getmasternodecount (const UniValue& params, bool fHelp)
             "{\n"
             "  \"total\": n,        (numeric) Total masternodes\n"
             "  \"stable\": n,       (numeric) Stable count\n"
-            //"  \"obfcompat\": n,    (numeric) Obfuscation Compatible\n" // Due to some compilation error commented this to check multi-tier architecture
-            //"  \"enabled\": n,      (numeric) Enabled masternodes\n"    // Due to some compilation error commented this to check multi-tier architecture , will fix this once changes will be approved
+            "  \"obfcompat\": n,    (numeric) Obfuscation Compatible\n"
+            "  \"enabled\": n,      (numeric) Enabled masternodes\n"
             "  \"inqueue\": n       (numeric) Masternodes in queue\n"
             "}\n"
 
@@ -176,14 +175,16 @@ UniValue getmasternodecount (const UniValue& params, bool fHelp)
     UniValue obj(UniValue::VOBJ);
     int nCount = 0;
     int ipv4 = 0, ipv6 = 0, onion = 0;
+
     if (chainActive.Tip())
         mnodeman.GetNextMasternodeInQueueForPayment(chainActive.Tip()->nHeight, true, nCount);
+
     mnodeman.CountNetworks(ActiveProtocol(), ipv4, ipv6, onion);
 
     obj.push_back(Pair("total", mnodeman.size()));
     obj.push_back(Pair("stable", mnodeman.stable_size()));
-    //obj.push_back(Pair("obfcompat", mnodeman.CountEnabled(ActiveProtocol()))); // Due to some compilation error commented this to check multi-tier architecture , will fix this once changes will be approved
-    //obj.push_back(Pair("enabled", mnodeman.CountEnabled()));
+    obj.push_back(Pair("obfcompat", mnodeman.CountEnabled(ActiveProtocol())));
+    obj.push_back(Pair("enabled", mnodeman.CountEnabled()));
     obj.push_back(Pair("inqueue", nCount));
     obj.push_back(Pair("ipv4", ipv4));
     obj.push_back(Pair("ipv6", ipv6));
