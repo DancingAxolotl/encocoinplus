@@ -354,20 +354,21 @@ std::string GetRequiredPaymentsString(int nBlockHeight)
     }
 }
 
-//Commented the pprevious implemented code to add multitier
-/*void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int64_t nFees, bool fProofOfStake, bool fZEPGStake)
+void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int64_t nFees, bool fProofOfStake, bool fZEPGStake)
 {
     CBlockIndex* pindexPrev = chainActive.Tip();
     if (!pindexPrev) return;
 
     bool hasPayment = true;
     CScript payee;
+    const unsigned int winningMasternodeLevel;
 
     //spork
     if (!masternodePayments.GetBlockPayee(pindexPrev->nHeight + 1, payee)) {
         //no masternode detected
         CMasternode* winningNode = mnodeman.GetCurrentMasterNode(1);
         if (winningNode) {
+            winningMasternodeLevel = winningNode.Level();
             payee = GetScriptForDestination(winningNode->pubKeyCollateralAddress.GetID());
         } else {
             LogPrint("masternode","CreateNewBlock: Failed to detect masternode to pay\n");
@@ -376,7 +377,7 @@ std::string GetRequiredPaymentsString(int nBlockHeight)
     }
 
     CAmount blockValue = GetBlockValue(pindexPrev->nHeight);
-    CAmount masternodePayment = GetMasternodePayment(pindexPrev->nHeight, blockValue, 0, fZEPGStake);
+    CAmount masternodePayment = GetMasternodePayment(pindexPrev->nHeight, winningMasternodeLevel, blockValue, 0, fZEPGStake);
     CAmount devPayment = GetDevelopersPayment(pindexPrev->nHeight, blockValue, fZEPGStake);
 
     if (hasPayment) {
@@ -386,7 +387,7 @@ std::string GetRequiredPaymentsString(int nBlockHeight)
              * use vout.size() to align with several different cases.
              * An additional output is appended as the masternode payment
              */
-/*            unsigned int i = txNew.vout.size();
+            unsigned int i = txNew.vout.size();
             txNew.vout.resize(i + 1);
             txNew.vout[i].scriptPubKey = payee;
             txNew.vout[i].nValue = masternodePayment;
@@ -424,84 +425,7 @@ std::string GetRequiredPaymentsString(int nBlockHeight)
 
         LogPrint("masternode","Masternode payment of %s to %s, devfund:%s Height:%d\n", FormatMoney(masternodePayment).c_str(), address2.ToString().c_str(), FormatMoney(devPayment).c_str(), pindexPrev->nHeight);
     }
-}*/
-
-
-// Added for Multitier-Architecture Updation
-
-void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int64_t nFees, bool fProofOfStake, bool fZEPGStake)
-{
-    CBlockIndex* pindexPrev = chainActive.Tip();
-    if (!pindexPrev)
-        return;
-
-    for(unsigned masternodeLevel = CMasternode::LevelValue::MIN; masternodeLevel <= CMasternode::LevelValue::MAX; ++masternodeLevel) {
-    bool hasPayment = true;
-    CScript payee;
-
-    //spork
-    if (!masternodePayments.GetBlockPayee(pindexPrev->nHeight + 1, masternodeLevel,payee)) {
-        //no masternode detected
-        CMasternode* winningNode = mnodeman.GetCurrentMasterNode(masternodeLevel,1);
-        if (winningNode) {
-            payee = GetScriptForDestination(winningNode->pubKeyCollateralAddress.GetID());
-        } else {
-            LogPrint("masternode","CreateNewBlock: Failed to detect masternode to pay\n");
-            hasPayment = false;
-        }
-    }
-
-    CAmount blockValue = GetBlockValue(pindexPrev->nHeight,masternodeLevel);
-    CAmount masternodePayment = GetMasternodePayment(pindexPrev->nHeight, masternodeLevel,blockValue, 0, fZEPGStake);
-    CAmount devPayment = GetDevelopersPayment(pindexPrev->nHeight,blockValue, fZEPGStake);
-
-    if (hasPayment) {
-        if (fProofOfStake) {
-            /**For Proof Of Stake vout[0] must be null
-             * Stake reward can be split into many different outputs, so we must
-             * use vout.size() to align with several different cases.
-             * An additional output is appended as the masternode payment
-             */
-            unsigned int i = txNew.vout.size();
-            txNew.vout.resize(i + 1);
-            txNew.vout[i].scriptPubKey = payee;
-            txNew.vout[i].nValue = masternodePayment;
-
-            //subtract mn payment from the stake reward
-            if (!txNew.vout[1].IsZerocoinMint()) {
-                if (i == 2) {
-                    // Majority of cases; do it quick and move on
-                    txNew.vout[i - 1].nValue -= (masternodePayment + devPayment);
-                } else if (i > 2) {
-                    // special case, stake is split between (i-1) outputs
-                    unsigned int outputs = i-1;
-                    CAmount mnPaymentSplit = (masternodePayment + devPayment) / outputs;
-                    CAmount mnPaymentRemainder = (masternodePayment + devPayment) - (mnPaymentSplit * outputs);
-                    for (unsigned int j=1; j<=outputs; j++) {
-                        txNew.vout[j].nValue -= mnPaymentSplit;
-                    }
-                    // in case it's not an even division, take the last bit of dust from the last one
-                    txNew.vout[outputs].nValue -= mnPaymentRemainder;
-                }
-              // dev payment
-              CBitcoinAddress devbaddress = CBitcoinAddress(Params().GetDevFundAddress());
-              txNew.vout.push_back(CTxOut(devPayment, GetScriptForDestination(devbaddress.Get())));
-            }
-        } else {
-            txNew.vout.resize(2);
-            txNew.vout[1].scriptPubKey = payee;
-            txNew.vout[1].nValue = masternodePayment;
-            txNew.vout[0].nValue = blockValue - masternodePayment;
-        }
-
-        CTxDestination address1;
-        ExtractDestination(payee, address1);
-        CBitcoinAddress address2(address1);
-    }
-        //LogPrint("masternode","Masternode payment of %s to %s, devfund:%s Height:%d\n", FormatMoney(masternodePayment).c_str(), address1.ToString().c_str(), FormatMoney(devPayment).c_str(), pindexPrev->nHeight);
-    }
 }
-
 
 int CMasternodePayments::GetMinMasternodePaymentsProto()
 {
@@ -600,19 +524,8 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
         }
     }
 }
-//Commented the previous implementation
-/*bool CMasternodePayments::GetBlockPayee(int nBlockHeight, CScript& payee)
-{
-    if (mapMasternodeBlocks.count(nBlockHeight)) {
-        return mapMasternodeBlocks[nBlockHeight].GetPayee(payee);
-    }
 
-    return false;
-}*/
-
-// Added for Multitier-Architecture Updation
-
-bool CMasternodePayments::GetBlockPayee(int nBlockHeight, unsigned masternodeLevel, CScript& payee)
+bool CMasternodePayments::GetBlockPayee(int nBlockHeight, unsigned int masternodeLevel, CScript& payee)
 {
     auto block = mapMasternodeBlocks.find(nBlockHeight);
 
@@ -628,39 +541,6 @@ bool CMasternodePayments::GetBlockPayee(int nBlockHeight, unsigned masternodeLev
     }
 }
 
-//Commented the previous implementation
-// Is this masternode scheduled to get paid soon?
-// -- Only look ahead up to 8 blocks to allow for propagation of the latest 2 winners
-/*bool CMasternodePayments::IsScheduled(CMasternode& mn, int nNotBlockHeight)
-{
-    LOCK(cs_mapMasternodeBlocks);
-
-    int nHeight;
-    {
-        TRY_LOCK(cs_main, locked);
-        if (!locked || chainActive.Tip() == NULL) return false;
-        nHeight = chainActive.Tip()->nHeight;
-    }
-
-    CScript mnpayee;
-    mnpayee = GetScriptForDestination(mn.pubKeyCollateralAddress.GetID());
-
-    CScript payee;
-    for (int64_t h = nHeight; h <= nHeight + 8; h++) {
-        if (h == nNotBlockHeight) continue;
-        if (mapMasternodeBlocks.count(h)) {
-            if (mapMasternodeBlocks[h].GetPayee(payee)) {
-                if (mnpayee == payee) {
-                    return true;
-                }
-            }
-        }
-    }
-
-    return false;
-}*/
-
-// Added for Multitier-Architecture Updation
 bool CMasternodePayments::IsScheduled(CMasternode& mn, int nSameLevelMNCount, int nNotBlockHeight) const
 {
     LOCK(cs_mapMasternodeBlocks);
@@ -668,16 +548,8 @@ bool CMasternodePayments::IsScheduled(CMasternode& mn, int nSameLevelMNCount, in
     int64_t nHeight;
     {
         TRY_LOCK(cs_main, locked);
-
-        if (!locked)
-            return false;
-
-        auto chain_tip = chainActive.Tip();
-
-        if(!chain_tip)
-            return false;
-
-        nHeight = chain_tip->nHeight;
+        if (!locked || chainActive.Tip() == NULL) return false;
+        nHeight = chainActive.Tip()->nHeight;
     }
 
     CScript mnpayee = GetScriptForDestination(mn.pubKeyCollateralAddress.GetID());
@@ -693,16 +565,8 @@ bool CMasternodePayments::IsScheduled(CMasternode& mn, int nSameLevelMNCount, in
             continue;
 
         CScript payee;
-        /*if(nHeight >= 39000)
-        {*/
         if(!block_payees->second.GetPayee(mn.Level(), payee))
             continue;
-        /*}
-        else
-        {
-        if(!block_payees->second.GetPayee(payee))
-        continue;
-        }*/
 
         if(mnpayee == payee)
             return true;
@@ -736,72 +600,6 @@ bool CMasternodePayments::AddWinningMasternode(CMasternodePaymentWinner& winnerI
 
     return true;
 }
-
-//Commented the previous implementation to check the multitier architecture
-/*bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
-{
-    LOCK(cs_vecPayments);
-
-    int nMaxSignatures = 0;
-    int nMasternode_Drift_Count = 0;
-
-    std::string strPayeesPossible = "";
-
-    CAmount nReward = GetBlockValue(nBlockHeight);
-
-    if (sporkManager.IsSporkActive(SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT)) {
-        // Get a stable number of masternodes by ignoring newly activated (< 8000 sec old) masternodes
-        nMasternode_Drift_Count = mnodeman.stable_size() + Params().MasternodeCountDrift();
-    }
-    else {
-        //account for the fact that all peers do not see the same masternode count. A allowance of being off our masternode count is given
-        //we only need to look at an increased masternode count because as count increases, the reward decreases. This code only checks
-        //for mnPayment >= required, so it only makes sense to check the max node count allowed.
-        nMasternode_Drift_Count = mnodeman.size() + Params().MasternodeCountDrift();
-    }
-
-    CAmount requiredMasternodePayment = GetMasternodePayment(nBlockHeight, nReward, nMasternode_Drift_Count, txNew.HasZerocoinSpendInputs());
-
-    //require at least 6 signatures
-    for (CMasternodePayee& payee : vecPayments)
-        if (payee.nVotes >= nMaxSignatures && payee.nVotes >= MNPAYMENTS_SIGNATURES_REQUIRED)
-            nMaxSignatures = payee.nVotes;
-
-    // if we don't have at least 6 signatures on a payee, approve whichever is the longest chain
-    if (nMaxSignatures < MNPAYMENTS_SIGNATURES_REQUIRED) return true;
-
-    for (CMasternodePayee& payee : vecPayments) {
-        bool found = false;
-        for (CTxOut out : txNew.vout) {
-            if (payee.scriptPubKey == out.scriptPubKey) {
-                if(out.nValue == requiredMasternodePayment)
-                    found = true;
-                else
-                    LogPrintf("%s : Masternode payment value (%s) different from required value (%s).\n",
-                            __func__, FormatMoney(out.nValue).c_str(), FormatMoney(requiredMasternodePayment).c_str());
-            }
-        }
-
-        if (payee.nVotes >= MNPAYMENTS_SIGNATURES_REQUIRED) {
-            if (found) return true;
-
-            CTxDestination address1;
-            ExtractDestination(payee.scriptPubKey, address1);
-            CBitcoinAddress address2(address1);
-
-            if (strPayeesPossible == "") {
-                strPayeesPossible += address2.ToString();
-            } else {
-                strPayeesPossible += "," + address2.ToString();
-            }
-        }
-    }
-
-    LogPrint("masternode","CMasternodePayments::IsTransactionValid - Missing required payment of %s to %s\n", FormatMoney(requiredMasternodePayment).c_str(), strPayeesPossible.c_str());
-    return false;
-}*/
-
-// Added for Multitier-Architecture Updation
 
 bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
 {
@@ -972,100 +770,7 @@ void CMasternodePayments::CleanPaymentList()
     }
 }
 
-// Added for Multitier-Architecture Updation
-
 bool CMasternodePayments::ProcessBlock(int nBlockHeight)
-{
-    if(!fMasterNode)
-        return false;
-
-    auto nWinnerBlockHeight = nBlockHeight + 10;
-
-
-    if(nWinnerBlockHeight <= nLastBlockHeight)
-        return false;
-
-    int n = mnodeman.GetMasternodeRank(activeMasternode.vin, nWinnerBlockHeight - 100, ActiveProtocol());
-
-    if (n == -1) {
-        LogPrint("mnpayments", "CMasternodePayments::ProcessBlock - Unknown Masternode\n");
-        return false;
-    }
-
-    if (n > MNPAYMENTS_SIGNATURES_TOTAL) {
-        LogPrint("mnpayments", "CMasternodePayments::ProcessBlock - Masternode not in the top %d (%d)\n", MNPAYMENTS_SIGNATURES_TOTAL, n);
-        return false;
-    }
-
-    LogPrint("mnpayments", "CMasternodePayments::ProcessBlock() Start nHeight %d - vin %s. \n", nWinnerBlockHeight, activeMasternode.vin.prevout.hash.ToString());
-    // pay to the oldest MN that still had no payment but its input is old enough and it was active long enough
-
-    std::string errorMessage;
-    CPubKey pubKeyMasternode;
-    CKey keyMasternode;
-
-    std::vector<CMasternodePaymentWinner> winners;
-
-    for(unsigned masternodeLevel = CMasternode::LevelValue::MIN; masternodeLevel <= CMasternode::LevelValue::MAX; ++masternodeLevel) {
-
-        int nCount = 0;
-
-        auto pmn = mnodeman.GetNextMasternodeInQueueForPayment(nWinnerBlockHeight, masternodeLevel, true, nCount);
-
-        if(!pmn) {
-            LogPrint("mnpayments", "CMasternodePayments::ProcessBlock() Failed to find masternode level %d to pay \n", masternodeLevel);
-            continue;
-        }
-
-        auto payee = GetScriptForDestination(pmn->pubKeyCollateralAddress.GetID());
-
-        CMasternodePaymentWinner newWinner{activeMasternode.vin};
-        newWinner.nBlockHeight = nWinnerBlockHeight;
-        newWinner.AddPayee(payee, masternodeLevel);
-
-        CTxDestination address1;
-        ExtractDestination(payee, address1);
-        CBitcoinAddress address2{address1};
-
-        LogPrint("mnpayments", "CMasternodePayments::ProcessBlock() Winner payee %s nHeight %d level %d. \n", address2.ToString().c_str(), newWinner.nBlockHeight, masternodeLevel);
-
-        LogPrint("mnpayments", "CMasternodePayments::ProcessBlock() - Signing Winner level %d\n", masternodeLevel);
-
-        LogPrint("mnpayments", "CMasternodePayments::ProcessBlock() - AddWinningMasternode level %d\n", masternodeLevel);
-
-        if(!AddWinningMasternode(newWinner))
-            continue;
-
-        winners.emplace_back(newWinner);
-    }
-
-    if(winners.empty())
-        return false;
-
-    if (ActiveProtocol() >= CONSENSUS_FORK_PROTO) {
-        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-        bool bRelay = true;
-        ss << bRelay;
-        for (auto& winner : winners)
-            ss << winner;
-        {
-            LOCK(cs_vNodes);
-            for (CNode* pnode : vNodes)
-                pnode->PushMessage("mnwp", ss);
-        }
-    } else {
-        for (auto& winner : winners)
-            winner.Relay();
-    }
-
-    nLastBlockHeight = nWinnerBlockHeight;
-
-    return true;
-}
-
-//Commented the previous implementation to update for multi-tier masternode architecture
-
-/*bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 {
     if (!fMasterNode) return false;
 
@@ -1137,7 +842,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
     }
 
     return false;
-}*/
+}
 
 void CMasternodePayments::Sync(CNode* node, int nCountNeeded)
 {

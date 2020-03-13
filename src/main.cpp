@@ -2033,29 +2033,6 @@ int64_t GetBlockValue(int nHeight, unsigned int masternodeLevel)
     return nSubsidy;
 }
 
-// Commented as created new API for GetMasternodePayment with multitier
-/*int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCount, bool isZEPGStake)
-{
-    int64_t ret = 0;
-
-    if (Params().NetworkID() == CBaseChainParams::TESTNET) {
-        if (nHeight < 200)
-            return 0;
-    }
-
-    if (nHeight <= Params().LAST_POW_BLOCK()) {
-        ret = 0;
-    } else if (nHeight < 10001) {
-        ret = blockValue * 60 / 100;
-    } else {
-        ret = blockValue * 848 / 1000;
-    }
-
-    return ret;
-}
-*/
-
-// Added for Multitier-Architecture Updation
 int64_t GetMasternodePayment(int nHeight, unsigned masternodeLevel, int64_t blockValue,int nMasternodeCount, bool isZEPGStake)
 {
 //    if (nHeight <= Params().StartMNPaymentsBlock())

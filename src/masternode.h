@@ -128,7 +128,7 @@ public:
     };
 
     // Added for Multitier-Architecture Updation
-    enum LevelValue : unsigned {
+    enum LevelValue : unsigned int {
         UNSPECIFIED = 0u,
         MIN = 1u,
         MAX = 3u,

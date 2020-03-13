@@ -110,8 +110,7 @@ public:
     /// Clear Masternode vector
     void Clear();
 
-    //int CountEnabled(int protocolVersion = -1);
-    int CountEnabled(unsigned masternodeLevel = CMasternode::LevelValue::UNSPECIFIED, int protocolVersion = -1); // Updated the API prototype for Multitier Updation
+    int CountEnabled(int protocolVersion = -1);
 
     void CountNetworks(int protocolVersion, int& ipv4, int& ipv6, int& onion);
 
@@ -123,14 +122,14 @@ public:
     CMasternode* Find(const CPubKey& pubKeyMasternode);
 
     /// Find an entry in the masternode list that is next to be paid
-    CMasternode* GetNextMasternodeInQueueForPayment(int nBlockHeight, unsigned masternodeLevel,bool fFilterSigTime, int& nCount); // Updated the API prototype for Multitier Updation
+    CMasternode* GetNextMasternodeInQueueForPayment(int nBlockHeight, bool fFilterSigTime, int& nCount);
 
     /// Find a random entry
     CMasternode* FindRandomNotInVec(std::vector<CTxIn>& vecToExclude, int protocolVersion = -1);
 
     /// Get the current winner for this block
     //CMasternode* GetCurrentMasterNode(int mod = 1, int64_t nBlockHeight = 0, int minProtocol = 0);
-    CMasternode* GetCurrentMasterNode(unsigned masternodeLevel, int mod = 1, int64_t nBlockHeight = 0, int minProtocol = 0); // Updated the API prototype for Multitier Updation
+    CMasternode* GetCurrentMasterNode(int mod = 1, int64_t nBlockHeight = 0, int minProtocol = 0);
 
     std::vector<CMasternode> GetFullMasternodeVector()
     {

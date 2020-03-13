@@ -382,37 +382,15 @@ int CMasternodeMan::stable_size ()
 }
 
 //Updated the API to count the enabled masternode
-int CMasternodeMan::CountEnabled(unsigned masternodeLevel, int protocolVersion)
+int CMasternodeMan::CountEnabled(int protocolVersion)
 {
-
-
     if(protocolVersion == -1)
         protocolVersion = masternodePayments.GetMinMasternodePaymentsProto();
 
-    auto check_level = masternodeLevel != CMasternode::LevelValue::UNSPECIFIED;
-
     return std::count_if(vMasternodes.begin(), vMasternodes.end(), [=](CMasternode& mn){
-
         mn.Check();
-
-        if(check_level && masternodeLevel != mn.Level())
-            return false;
-
         return mn.protocolVersion >= protocolVersion && mn.IsEnabled();
     });
-
-//Commented the previous implementation
-/*
-    int i = 0;
-    protocolVersion = protocolVersion == -1 ? masternodePayments.GetMinMasternodePaymentsProto() : protocolVersion;
-
-    for (CMasternode& mn : vMasternodes) {
-        mn.Check();
-        if (mn.protocolVersion < protocolVersion || !mn.IsEnabled()) continue;
-        i++;
-    }
-
-    return i;*/
 }
 
 void CMasternodeMan::CountNetworks(int protocolVersion, int& ipv4, int& ipv6, int& onion)
@@ -500,9 +478,7 @@ CMasternode* CMasternodeMan::Find(const CPubKey& pubKeyMasternode)
 //
 // Deterministically select the oldest/best masternode to pay on the network
 //
-
-// Added for Multitier Updatio , added masternodelevel in API as parameter
-CMasternode* CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight, unsigned masternodeLevel,bool fFilterSigTime, int& nCount)
+CMasternode* CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight, bool fFilterSigTime, int& nCount)
 {
     LOCK(cs);
 
@@ -513,7 +489,7 @@ CMasternode* CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight
         Make a vector with all of the last paid times
     */
 
-    int nMnCount = CountEnabled(masternodeLevel); // Added for Multitier Updatio , added masternodelevel in API as parameter
+    int nMnCount = CountEnabled();
     for (CMasternode& mn : vMasternodes) {
         mn.Check();
         if (!mn.IsEnabled()) continue;
@@ -537,8 +513,7 @@ CMasternode* CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight
 
     //when the network is in the process of upgrading, don't penalize nodes that recently restarted
     if (fFilterSigTime && nCount < nMnCount / 3)
-        return GetNextMasternodeInQueueForPayment(nBlockHeight, masternodeLevel, false, nCount); // Added for Multitier Updatio , added masternodeLevel in API as parameter
-    // return GetNextMasternodeInQueueForPayment(nBlockHeight, false, nCount);
+        return GetNextMasternodeInQueueForPayment(nBlockHeight, false, nCount);
 
     // Sort them high to low
     sort(vecMasternodeLastPaid.rbegin(), vecMasternodeLastPaid.rend(), CompareLastPaid());
@@ -599,19 +574,14 @@ CMasternode* CMasternodeMan::FindRandomNotInVec(std::vector<CTxIn>& vecToExclude
 
 // Added for Multitier-Architecture Updation
 
-CMasternode* CMasternodeMan::GetCurrentMasterNode(unsigned masternodeLevel, int mod, int64_t nBlockHeight, int minProtocol)
+CMasternode* CMasternodeMan::GetCurrentMasterNode(int mod, int64_t nBlockHeight, int minProtocol)
 {
     int64_t score = 0;
     CMasternode* winner = nullptr;
 
-    auto check_masternodeLevel = masternodeLevel != CMasternode::LevelValue::UNSPECIFIED;
-
     // scan for winner
     for(CMasternode& mn : vMasternodes) {
         mn.Check();
-
-        if(check_masternodeLevel && mn.Level() != masternodeLevel)
-            continue;
 
         if(mn.protocolVersion < minProtocol || !mn.IsEnabled())
             continue;
@@ -629,31 +599,6 @@ CMasternode* CMasternodeMan::GetCurrentMasterNode(unsigned masternodeLevel, int 
 
     return winner;
 }
-
-//Commented the pervious implementation to update for multi-tier architecture
-/*CMasternode* CMasternodeMan::GetCurrentMasterNode(int mod, int64_t nBlockHeight, int minProtocol)
-{
-    int64_t score = 0;
-    CMasternode* winner = NULL;
-
-    // scan for winner
-    for (CMasternode& mn : vMasternodes) {
-        mn.Check();
-        if (mn.protocolVersion < minProtocol || !mn.IsEnabled()) continue;
-
-        // calculate the score for each Masternode
-        uint256 n = mn.CalculateScore(mod, nBlockHeight);
-        int64_t n2 = n.GetCompact(false);
-
-        // determine the winner
-        if (n2 > score) {
-            score = n2;
-            winner = &mn;
-        }
-    }
-
-    return winner;
-}*/
 
 int CMasternodeMan::GetMasternodeRank(const CTxIn& vin, int64_t nBlockHeight, int minProtocol, bool fOnlyActive)
 {

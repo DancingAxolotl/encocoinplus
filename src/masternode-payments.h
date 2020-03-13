@@ -113,23 +113,6 @@ public:
         vecPayments.clear();
     }
 
-    // Commented the previous implementation to update for multi-tier architecture
-    /*void AddPayee(unsigned masternodeLevel, CScript payeeIn, int nIncrement)
-    {
-        LOCK(cs_vecPayments);
-
-        auto payee = std::find_if(vecPayments.begin(), vecPayments.end(), [&payeeIn](const CMasternodePayee& p){
-            return p.scriptPubKey == payeeIn;
-        });
-
-        if(payee == vecPayments.end())
-            vecPayments.emplace_back(masternodeLevel, payeeIn, nIncrement);
-        else
-            payee->nVotes += nIncrement;
-    }*/
-
-    // Added for Multitier-Architecture Updation
-
     void AddPayee(unsigned masternodeLevel,CScript payeeIn, int nIncrement)
     {
         LOCK(cs_vecPayments);
@@ -147,7 +130,6 @@ public:
     }
 
 
-    // Commented the previous implementation to update for multi-tier architecture
     bool GetPayee(CScript& payee)
     {
         LOCK(cs_vecPayments);
@@ -163,7 +145,6 @@ public:
         return (nVotes > -1);
     }
 
-    // Added for Multitier-Architecture Updation
     bool GetPayee(unsigned masternodeLevel, CScript& payee) const
     {
         LOCK(cs_vecPayments);
